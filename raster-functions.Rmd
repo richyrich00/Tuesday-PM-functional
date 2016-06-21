@@ -2,20 +2,121 @@
 title: "Functionalizing Rasters from NEON"
 author: "R. Remigio"
 date: "June 21, 2016"
-output: html_document
+output: pdf_document
 ---
 
 ## Objectives
+
 Start by putting up objectives/tasks that students will be working though:
 1. Import a raster — A lidar canopy height model (lidar/Teak_lidarCHM.tif)
 
 1. For the CHM, set values == 0 to NA (not trees)
-Classify the raster according to some distribution – low medium and tall trees. This could be done using a histogram potentially or we could just decide that <2m is generally grasses / understory, <6m small trees,and the rest are tall trees. A function could import the desired thresholds. Visualize histogram/density and plot vertical cutoff lines.
 
-1. Take the chm and create a hillshade (http://neon-workwithdata.github.io/neon-data-institute-2016/R/create-hillshade-R/)
+1. Classify the raster according to some distribution – low medium and tall trees. This could be done using a histogram potentially or we could just decide that 6m is generally grasses / understory, 10m small trees,and the rest are tall trees. A function could import the desired thresholds. Visualize density and plot vertical cutoff lines.
 
-1. PLOT - layer the classified raster on top of the hillshade, add a legend for each “class” - legends are super tricky to simplifying this process with a function would be good.  see: http://neon-workwithdata.github.io/neon-data-institute-2016/R/classify-by-threshold-R/  for my take on forcing a legend outside of the plot area using par settings. You may have other better forms of magic to make this work well. :)
+1. Plot the classified raster, add a legend for each “class” - legends are super tricky to simplifying this process with a function would be good.  see: http://neon-workwithdata.github.io/neon-data-institute-2016/R/classify-by-threshold-R/  for my take on forcing a legend outside of the plot area using par settings. You may have other better forms of magic to make this work well. :)
 
 1. Export the plot figure to a pdf – publishable
-
 1. Export the classified raster as a geotiff with NaFlagg = -9999 to an outputs folder.
+
+
+
+```{r set up library}
+
+# load libraries
+library(raster)
+library(rhdf5)
+library(rgdal)
+
+```
+
+# Import Raster
+
+```{r import-raster}
+# Import a raster — A lidar canopy height model (lidar/Teak_lidarCHM.tif)
+
+chm<-raster("../NEONdata/D17-California/TEAK/2013/lidar/TEAK_lidarCHM.tif")
+
+plot(chm)
+```
+
+# Remove zero's and Classify 
+
+```{r set-zeroes-to-NA-classify}
+
+# histo with raw data
+old.chm<-hist(chm)
+plot(old.chm, main="Non-tidy CHM Data")
+
+# re-classify zeroes to NA
+chm[chm==0] <-NA
+
+hist(chm)
+
+## classify to distinguish  low and tall trees
+
+#create string of values
+# by creating a matrix
+class.m<- c(0, 2, 1,
+            2, 6, 2,
+            6, 60, 3)
+
+rcl.m<- matrix(class.m, 
+         ncol=3, 
+         byrow=TRUE)
+
+rcl.m
+
+new.chm<-reclassify(chm, rcl.m)
+
+plot(new.chm, main="Reclassified CHM Raster")
+
+
+
+```
+
+# Plot Re-classified Raster
+
+```{r plot-raster}
+# make room for a legend
+par(xpd = FALSE, mar=c(5.1, 4.1, 4.1, 4.5))
+# plot
+plot(new.chm,
+     col=c("yellow","orange","tan"), main="Reclassifed CHM Raster" # hard code colors, unclassified (0)=white,
+  	 #N (1) =blue, S(2)=green
+     legend=F)
+# allow legend to plot outside of bounds
+par(xpd=TRUE)
+# create the legend
+legend((par()$usr[2] + 20), 4103300,  # set x,y legend location
+       legend = c("low", "medium", "high"),  # make sure the order matches the colors, next
+       fill = c("yellow", "orange", "tan"),
+       bty="n") # turn off border
+
+```
+
+# 1. Export the plot figure to a pdf – publishable
+
+```{r}
+
+```
+
+
+
+# 1. Export the plot figure to a TIFF – publishable
+
+
+
+
+```{r export-TIFF}
+#1. Export the plot figure as a TIFF – publishable
+
+writeRaster(new.chm,
+            filename="outputs/TEAK/Teak_nsAspect.tif",
+            format="GTiff",
+            options="COMPRESS=LZW",
+            overwrite = TRUE,
+            NAflag = -9999)
+
+```
+
