@@ -37,73 +37,76 @@ library(rgdal)
 
 chm<-raster("../NEONdata/D17-California/TEAK/2013/lidar/TEAK_lidarCHM.tif")
 
+# quick sanity check
 plot(chm)
 ```
 
 # Remove zero's and Classify 
 
-```{r set-zeroes-to-NA-classify}
-
+```{r set-zeroes-reclassify}
 # histo with raw data
 old.chm<-hist(chm)
+
+#sanity check
 plot(old.chm, main="Non-tidy CHM Data")
+
+#check density plot
+density(chm)
+
 
 # re-classify zeroes to NA
 chm[chm==0] <-NA
-
+plot(chm)
 hist(chm)
 
 ## classify to distinguish  low and tall trees
+# create matrix for reclassification
 
 #create string of values
 # by creating a matrix
-class.m<- c(0, 2, 1,
-            2, 6, 2,
-            6, 60, 3)
+height.class.m<- c(0, 6, 1,
+            6, 30, 2,
+            30, 50, 3,
+            50, 100, 4)
 
-rcl.m<- matrix(class.m, 
+# reshape vector into a matrix
+
+rclass.m<- matrix(height.class.m, 
          ncol=3, 
          byrow=TRUE)
 
-rcl.m
+rclass.m
 
-new.chm<-reclassify(chm, rcl.m)
+# reclassify raster
+reclassified.chm<-reclassify(chm, rclass.m)
 
-plot(new.chm, main="Reclassified CHM Raster")
+plot(reclassified.chm, main="Reclassified CHM Raster")
 
-
-
-```
 
 # Plot Re-classified Raster
+pdf(file="TEAK", width=6, height=7)
 
-```{r plot-raster}
-# make room for a legend
-par(xpd = FALSE, mar=c(5.1, 4.1, 4.1, 4.5))
-# plot
-plot(new.chm,
-     col=c("yellow","orange","tan"), main="Reclassifed CHM Raster" # hard code colors, unclassified (0)=white,
-  	 #N (1) =blue, S(2)=green
-     legend=F)
-# allow legend to plot outside of bounds
-par(xpd=TRUE)
-# create the legend
-legend((par()$usr[2] + 20), 4103300,  # set x,y legend location
-       legend = c("low", "medium", "high"),  # make sure the order matches the colors, next
-       fill = c("yellow", "orange", "tan"),
-       bty="n") # turn off border
 
+density(reclassified.chm, 
+        main="Canopy heights at Teakettle site\n with bin cutoffs in red",
+        xlab= "Height (m)")
+
+abline(v= rclass.m[ , 2], col ="red") ## adds abline based on classification cutoffs
+
+dev.off()
 ```
+
+```{r}
+
+
+
 
 # 1. Export the plot figure to a pdf – publishable
 
 ```{r}
+pdf(file="TEAK_CHM_density_with_braeks.pdf", width=6, height=7)
 
 ```
-
-
-
-# 1. Export the plot figure to a TIFF – publishable
 
 
 
@@ -111,8 +114,8 @@ legend((par()$usr[2] + 20), 4103300,  # set x,y legend location
 ```{r export-TIFF}
 #1. Export the plot figure as a TIFF – publishable
 
-writeRaster(new.chm,
-            filename="outputs/TEAK/Teak_nsAspect.tif",
+writeRaster(reclassified.chm,
+            filename="reclassified_CHM_TEAK_GEOTIFF.tif",
             format="GTiff",
             options="COMPRESS=LZW",
             overwrite = TRUE,
